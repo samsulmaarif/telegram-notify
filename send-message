@@ -22,7 +22,7 @@ DISPLAY_MODE="markdown"
 DISPLAY_SILENT="false"
 
 # Configuration file
-FILE_CONF="/home/cdimage/telegram-notify/telegram-notify.conf"
+FILE_CONF="/path/to/telegram-notify.conf"
 
 # -------------------------------------------------------
 #   Check tools availability
