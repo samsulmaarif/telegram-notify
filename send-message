@@ -1,0 +1,156 @@
+#!/bin/bash
+# ---------------------------------------------------
+#  Send notification to a telegram account thru a bot account
+#  Configuration is stored in /etc/telegram-notify.conf
+#  Depends on curl 
+#
+#  Revision history :
+#    10/01/2016, V1.0 - Creation by N. Bernaerts
+#    22/01/2016, V1.1 - Handle emoticons
+#    06/08/2016, V1.2 - Add API key and User ID parameters
+#                       Remove dependency to PERL
+#    08/08/2016, V1.3 - Add --document, --html and --silent options
+#    10/11/2016, V1.4 - Add --icon option
+# ---------------------------------------------------
+
+# initialise variables
+NOTIFY_TEXT=""
+DISPLAY_TEXT=""
+DISPLAY_PICT=""
+DISPLAY_ICON=""
+DISPLAY_MODE="markdown"
+DISPLAY_SILENT="false"
+
+# Configuration file
+FILE_CONF="/home/cdimage/telegram-notify/telegram-notify.conf"
+
+# -------------------------------------------------------
+#   Check tools availability
+# -------------------------------------------------------
+
+command -v curl >/dev/null 2>&1 || { echo "[Error] Please install curl"; exit 1; }
+
+# -------------------------------------------------------
+#   Loop to load arguments
+# -------------------------------------------------------
+
+# if no argument, display help
+if [ $# -eq 0 ] 
+then
+  echo "Tool to send a message to a Telegram User or Channel."
+  echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
+  echo "Main parameters are :"
+  echo "  --text <text>       Text of the message or file holding the text"
+  echo "  --photo <file>      Image to display"
+  echo "  --document <file>   Document to transfer"
+  echo "Options are :"
+  echo "  --title <title>     Title of the message (if text message)"
+  echo "  --html              Use HTML mode for text content (markdown by default)"
+  echo "  --silent            Send message in silent mode (no user notification on the client)"
+  echo "  --user <user-id>    Recipient User or Channel ID (replaces user-id= in ${FILE_CONF})"
+  echo "  --key <api-key>     API Key of your Telegram bot (replaces api-key= in ${FILE_CONF})"
+  echo "Optionnal icons are :"
+  echo "  --success           Add a success icon"
+  echo "  --error             Add an error icon"
+  echo "  --question          Add a question mark icon"
+  echo "  --icon <code>       Add an icon by UTF code (ex 1F355)" 
+  exit
+fi
+
+# loop to retrieve arguments
+while test $# -gt 0
+do
+  case "$1" in
+    "--text") shift; DISPLAY_TEXT="$1"; shift; ;;
+    "--photo") shift; PICTURE="$1"; shift; ;;
+    "--document") shift; DOCUMENT="$1"; shift; ;;
+    "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
+    "--html") DISPLAY_MODE="html"; shift; ;;
+    "--silent") DISPLAY_SILENT="true"; shift; ;;
+    "--user") shift; USER_ID="$1"; shift; ;;
+    "--key") shift; API_KEY="$1"; shift; ;;
+    "--success") DISPLAY_ICON=$(echo -e "✅"); shift; ;;
+    "--error") DISPLAY_ICON=$(echo -e "🚫"); shift; ;;
+    "--question") DISPLAY_ICON=$(echo -e "❓"); shift; ;;
+    "--icon") shift; DISPLAY_ICON=$(echo -e "\U$1"); shift; ;;
+    *) shift; ;;
+  esac
+done
+
+# -------------------------------------------------------
+#   Read configuration
+# -------------------------------------------------------
+
+# if needed, load from configuration file
+[ -f "${FILE_CONF}" -a "${API_KEY}" = "" ] && API_KEY=$(cat "${FILE_CONF}" | grep "api-key=" | cut -d'=' -f2)
+[ -f "${FILE_CONF}" -a "${USER_ID}" = "" ] && USER_ID=$(cat "${FILE_CONF}" | grep "user-id=" | cut -d'=' -f2)
+
+# check API key and User ID
+[ "${API_KEY}" = "" ] && { echo "[Error] Please provide API key or set it in ${FILE_CONF}"; exit 1; }
+[ "${USER_ID}" = "" ] && { echo "[Error] Please provide User ID or set it in ${FILE_CONF}"; exit 1; }
+
+# -------------------------------------------------------
+#   Check for file existence
+# -------------------------------------------------------
+
+# if picture, check for image file
+[ "${PICTURE}" != "" -a ! -f "${PICTURE}" ] && { echo "[error] Image file ${PICTURE} doesn't exist"; exit; }
+
+# if document, check for document file
+[ "${DOCUMENT}" != "" -a ! -f "${DOCUMENT}" ] && { echo "[error] Document file ${DOCUMENT} doesn't exist"; exit; }
+
+# -------------------------------------------------------
+#   String preparation : space and line break
+# -------------------------------------------------------
+
+# if text is a file, get its content
+[ -f "${DISPLAY_TEXT}" ] && DISPLAY_TEXT="$(cat "${DISPLAY_TEXT}")"
+
+# convert \n to LF
+DISPLAY_TEXT="$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')"
+
+# if icon defined, include ahead of notification
+[ "${DISPLAY_ICON}" != "" ] && NOTIFY_TEXT="${DISPLAY_ICON} "
+
+# if title defined, add it with line break
+if [ "${DISPLAY_TITLE}" != "" ]
+then
+	# convert title according to Markdown or HTML
+	[ "${DISPLAY_MODE}" = "html" ] && NOTIFY_TEXT="${NOTIFY_TEXT}<b>${DISPLAY_TITLE}</b>%0A%0A" \
+				       || NOTIFY_TEXT="${NOTIFY_TEXT}*${DISPLAY_TITLE}*%0A%0A"
+fi
+
+# if text defined, replace \n by HTML line break
+[ "${DISPLAY_TEXT}" != "" ] && NOTIFY_TEXT="${NOTIFY_TEXT}${DISPLAY_TEXT}"
+
+# -------------------------------------------------------
+#   Notification
+# -------------------------------------------------------
+
+# if photo defined, display it with icon and caption
+if [ "${PICTURE}" != "" ]
+then
+  # display image
+  curl --silent --insecure --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form photo="@${PICTURE}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendPhoto" > /dev/null 2>&1
+
+# if document defined, send it with icon and caption
+elif [ "${DOCUMENT}" != "" ]
+then
+  # transfer document
+  curl --silent --insecure --form chat_id=${USER_ID} --form disable_notification=${DISPLAY_SILENT} --form document="@${DOCUMENT}" --form caption="${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendDocument" > /dev/null 2>&1
+
+# else, if text is defined, display it with icon and title
+elif [ "${NOTIFY_TEXT}" != "" ]
+then
+  # display text message
+  curl --silent --insecure --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage" > /dev/null 2>&1
+
+#  else, nothing, error
+else
+  # error message
+  echo "[Error] Nothing to notify"
+fi
+
+# end
+exit 0
+
