@@ -11,11 +11,13 @@
 #                       Remove dependency to PERL
 #    08/08/2016, V1.3 - Add --document, --html and --silent options
 #    10/11/2016, V1.4 - Add --icon option
+#    30/01/2022, V1.5 - Add --code option
 # ---------------------------------------------------
 
 # initialise variables
 NOTIFY_TEXT=""
 DISPLAY_TEXT=""
+DISPLAY_CODE=""
 DISPLAY_PICT=""
 DISPLAY_ICON=""
 DISPLAY_MODE="markdown"
@@ -41,6 +43,7 @@ then
   echo "Message is sent from a Telegram Bot and can contain icon, text, image and/or document."
   echo "Main parameters are :"
   echo "  --text <text>       Text of the message or file holding the text"
+  echo "  --code <code>       Text of the message or file holding the code"
   echo "  --photo <file>      Image to display"
   echo "  --document <file>   Document to transfer"
   echo "Options are :"
@@ -62,6 +65,7 @@ while test $# -gt 0
 do
   case "$1" in
     "--text") shift; DISPLAY_TEXT="$1"; shift; ;;
+    "--code") shift; DISPLAY_CODE="$1"; shift; ;;
     "--photo") shift; PICTURE="$1"; shift; ;;
     "--document") shift; DOCUMENT="$1"; shift; ;;
     "--title") shift; DISPLAY_TITLE="$1"; shift; ;;
@@ -106,8 +110,14 @@ done
 # if text is a file, get its content
 [ -f "${DISPLAY_TEXT}" ] && DISPLAY_TEXT="$(cat "${DISPLAY_TEXT}")"
 
+# if code is a file, get its content
+[ -f "${DISPLAY_CODE}" ] && DISPLAY_CODE="$(cat "${DISPLAY_CODE}")"
+
 # convert \n to LF
 DISPLAY_TEXT="$(echo "${DISPLAY_TEXT}" | sed 's:\\n:\n:g')"
+
+# convert \n to LF
+DISPLAY_CODE="$(echo "${DISPLAY_CODE}" | sed 's:\\n:\n:g')"
 
 # if icon defined, include ahead of notification
 [ "${DISPLAY_ICON}" != "" ] && NOTIFY_TEXT="${DISPLAY_ICON} "
@@ -122,6 +132,9 @@ fi
 
 # if text defined, replace \n by HTML line break
 [ "${DISPLAY_TEXT}" != "" ] && NOTIFY_TEXT="${NOTIFY_TEXT}${DISPLAY_TEXT}"
+
+# if code defined, replace \n by HTML line break
+[ "${DISPLAY_CODE}" != "" ] && NOTIFY_CODE="${NOTIFY_TEXT}${DISPLAY_CODE}"
 
 # -------------------------------------------------------
 #   Notification
@@ -144,6 +157,12 @@ elif [ "${NOTIFY_TEXT}" != "" ]
 then
   # display text message
   curl --silent --insecure --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=${NOTIFY_TEXT}" "https://api.telegram.org/bot${API_KEY}/sendMessage" > /dev/null 2>&1
+
+# else, if code is defined, display it with icon and title
+elif [ "${NOTIFY_CODE}" != "" ]
+then
+  # display text message
+  curl --silent --insecure --data chat_id="${USER_ID}" --data "disable_notification=${DISPLAY_SILENT}" --data "parse_mode=${DISPLAY_MODE}" --data "text=\`\`\`${NOTIFY_CODE}\`\`\`" "https://api.telegram.org/bot${API_KEY}/sendMessage" > /dev/null 2>&1
 
 #  else, nothing, error
 else
