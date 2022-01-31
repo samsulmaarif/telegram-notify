@@ -15,7 +15,7 @@ $ sudo apt install curl
 Clone this repositoy
 
 ```sh
-$ git clone https://github.com/quentinwolf/telegram-notify.git
+$ git clone https://github.com/samsulmaarif/telegram-notify.git
 ```
 
 Edit `send-message` file, change the value line 27 `FILE_CONF` with the path of file `telegam-notify.conf`.
