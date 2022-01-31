@@ -15,10 +15,10 @@ $ sudo apt install curl
 Clone this repositoy
 
 ```sh
-$ git clone https://github.com/samsulmaarif/telegram-notify.git
+$ git clone https://github.com/quentinwolf/telegram-notify.git
 ```
 
-Edit `send-message` file, change the value line 25 `FILE_CONF` with the path of file `telegam-notify.conf`.
+Edit `send-message` file, change the value line 27 `FILE_CONF` with the path of file `telegam-notify.conf`.
 
 Create the symbolic link:
 
@@ -29,7 +29,7 @@ $ sudo ln -s /path/to/send-message /usr/bin/telegram-notify
 Make sure the script is executable:
 
 ```sh
-$ sudo chmod +x /us/bin/telegram-notify
+$ sudo chmod +x /usr/bin/telegram-notify
 ```
 
 Now the command `telegram-notify` can be called from anywhere in the command line.
