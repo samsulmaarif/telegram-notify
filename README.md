@@ -29,7 +29,7 @@ $ sudo ln -s /path/to/send-message /usr/bin/telegram-notify
 Make sure the script is executable:
 
 ```sh
-$ sudo chmod +x /us/bin/telegram-notify
+$ sudo chmod +x /usr/bin/telegram-notify
 ```
 
 Now the command `telegram-notify` can be called from anywhere in the command line.
